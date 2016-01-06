@@ -917,7 +917,7 @@ var GlueClient = function(socketObj, generalScope){
   var isRelName = function(nameToCheck) {
     cons && console.log("isRelName", nameToCheck);
 
-    if (typeof nameToCheck === 'string' && /^[a-z0-9-]+$/.test(nameToCheck) === false) {
+    if (typeof nameToCheck === 'string' && /^[a-zA-Z0-9-_]+$/.test(nameToCheck) === false) {
       return true;
     } else {
       return false;
