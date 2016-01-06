@@ -1,0 +1,82 @@
+<html>
+  <head>
+      <title>glueJS example client</title>
+  </head>
+
+  <body>
+
+    <div>
+
+      <h1>List of TV Display Assets:</h1>
+
+      <ul id="theList">
+
+      </ul>
+
+    </div>
+
+    <script src="assets/vendor/socket.io.js"></script>
+    <script src="assets/vendor/gluejs/glueclient.js"></script>
+
+    <script type="text/javascript">
+
+
+      /* basic socket and glueClient initialisation */
+
+      var socket = io();
+      var glueClient = new GlueClient(socket, 'window');
+      glueClient.init();
+
+
+      /* subscribe to some glue objects */
+
+      var displayAssetsTV = glueClient.subscribeObject('displayAssets-TV', 'copyOfDisplayAssets');
+      var displayAssetsController = glueClient.subscribObject('displayAssets-Controller', 'displayAssetsController');
+
+
+      /* a function that glue might trigger */
+
+      var customAlert = function(theAlert) {
+        alert(theAlert);
+      }
+
+
+      /* an event to detect when a glue object has been changed */
+
+      /* in an Angular or other data-bound web application, this
+      sort of thing is unnecessary */
+      glueClient.on('objectLoaded, objectUpdated, objectAppend, objectItemDelete', function(params) {
+
+        params = params.arguments;
+
+        if (params.remoteObjectName == "displayAssets-TV") {
+
+          /* displayAssets-TV has been updated */
+          for (var theAsset = displayAssetsTV) { // <-- note we're only accessing the local object (that we created in line 33)
+
+            /* create new list items out of each of the TV display assets */
+            var newLi = "<li>" + displayAssetsTV[theAsset][assetName] + "</li>";
+            document.getElementById('theList').innerHTML += newLi;
+
+          }
+
+          /* trigger an alert on all connected clients */
+          glueClient.functionGeneral('customAlert', 'List has been updated');
+
+        }
+
+      });
+
+
+      /* give glueClient a socket to work with */
+
+      socket.on('glue message', function(msg){
+        glueClient.signalHandler(msg, socket.io, socket);
+      });
+
+
+    </script>
+
+  </body>
+
+</html>
