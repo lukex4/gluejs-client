@@ -850,6 +850,13 @@ var GlueClient = function(socketObj, generalScope){
               $rootScope[localObjectName] = updatedObject;
               $rootScope.$apply();
 
+              var eventParams = {
+                "localObjectName": localObjectName,
+                "remoteObjectName": objectName
+              };
+
+              this.triggerEvent('objectUpdated', eventParams);
+
               cons && console.log("objectUpdate: $rootScope[" + localObjectName + "]", $rootScope[localObjectName]);
 
             break;
@@ -859,6 +866,13 @@ var GlueClient = function(socketObj, generalScope){
               cons && console.log("local object before update (" + localObjectName + "): ", window[localObjectName]);
 
               window[localObjectName] = updatedObject;
+
+              var eventParams = {
+                "localObjectName": localObjectName,
+                "remoteObjectName": objectName
+              };
+
+              this.triggerEvent('objectUpdated', eventParams);
 
               cons && console.log("objectUpdate: window[" + localObjectName + "]", window[localObjectName]);
 
