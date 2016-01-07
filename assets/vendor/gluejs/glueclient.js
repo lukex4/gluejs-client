@@ -486,7 +486,9 @@ var GlueClient = function(socketObj, generalScope){
   this.signalHandler = function(message, ioObj, socketObj) {
     cons && console.log("signalHandler", message);
 
-    message = JSON.parse(message);
+    if (checkStringJSON(message)) {
+      message = JSON.parse(message);
+    }
 
     switch(message.messageType) {
 
