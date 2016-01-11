@@ -727,7 +727,7 @@ var GlueClient = function(socketObj, generalScope){
                   this.triggerEvent('objectAppend', localObjectName);
 
                 } else {
-                  window[localObjectName][Object.keys(window[localObjectName])] = objectAddition;
+                  window[localObjectName][Object.keys(window[localObjectName]).length] = objectAddition;
                   this.triggerEvent('objectAppend', localObjectName);
 
                 }
