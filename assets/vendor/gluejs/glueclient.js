@@ -81,6 +81,31 @@ var GlueClient = function(socketObj, generalScope){
   /* / */
 
 
+  /* fetch remote object */
+  this.fetchObject = function(objectName) {
+    cons && console.log('fetchObject', objectName);
+
+    if (isRelName(objectName)) {
+
+      var msg = {
+        "messageType": "fetchObject",
+        "object": {
+          "objectName": objectName
+          }
+      };
+
+      socket.emit('glue message', JSON.stringify(msg));
+
+    } else {
+
+      return false;
+
+    }
+
+  };
+  /* / */
+
+
   /* subscribe to a remote object */
   this.subscribeObject = function(objectName, localObjectName, dontUpdate, convertToArray) {
     cons && console.log("subscribeObject", objectName, localObjectName);
@@ -90,6 +115,18 @@ var GlueClient = function(socketObj, generalScope){
       if (this.subscribedObjects[objectName]) {
 
         cons && console.log("remote object already subscribed");
+
+        switch(generalScope) {
+
+          case "$rootScope":
+            return $rootScope[localObjectName];
+          break;
+
+          case "window":
+            return window[localObjectName];
+          break;
+
+        }
 
       } else {
 
@@ -112,14 +149,9 @@ var GlueClient = function(socketObj, generalScope){
 
         cons && console.log("this.subscribedObjects after new object subscribed", this.subscribedObjects);
 
-        var msg = {
-          "messageType": "fetchObject",
-          "object": {
-            "objectName": objectName
-            }
-        };
+        this.fetchObject(objectName);
 
-        socket.emit('glue message', JSON.stringify(msg));
+        return true;
 
       }
 
@@ -482,9 +514,69 @@ var GlueClient = function(socketObj, generalScope){
   /* / */
 
 
+  /* register a new object on the server */
+  this.registerRemoteObject = function(objectName, subscribe, localObjName, convertToArray) {
+    cons && console.log('registerRemoteObject', objectName);
+
+    if (isRelName(objectName)) {
+
+      var msg = {
+        "messageType" : "registerObject",
+        "objectName" : objectName
+      };
+
+      socket.emit('glue message', JSON.stringify(msg));
+
+      cons && console.log('registerObject sent');
+
+      if (subscribe && typeof subscribe === 'boolean' && subscribe === true) {
+        this.subscribeObject(objectName, localObjName, false, convertToArray);
+      }
+
+      return true;
+
+    } else {
+
+      cons && console.log('registerRemoteObject failed - invalid object name');
+      return false;
+
+    }
+
+  };
+  /* / */
+
+
+  /* sends signal to fire function on server */
+  this.functionServer = function(funcName, funcParams) {
+    cons && console.log('functionServer', funcName, funcParams);
+
+    if (isRelName(funcName)) {
+
+      if (isRelObject(funcParams) === false) {
+        funcParams = {};
+      }
+
+      var msg = {
+        "messageType" : "serverFunction",
+        "functionName" : funcName,
+        "functionParams" : funcParams
+      };
+
+      socket.emit('glue message', JSON.stringify(msg));
+
+    } else {
+
+      return false;
+
+    }
+
+  };
+  /* / */
+
+
   /* processes and triggers based on received socket message */
   this.signalHandler = function(message, ioObj, socketObj) {
-    cons && console.log("signalHandler", message);
+    cons && console.log("signalHandler");
 
     if (checkStringJSON(message)) {
       message = JSON.parse(message);
@@ -840,6 +932,7 @@ var GlueClient = function(socketObj, generalScope){
         if (this.subscribedObjects[objectName] && this.subscribedObjects[objectName].dontUpdate === false) {
 
           var localObjectName = this.subscribedObjects[objectName].localObjectName;
+          var convertToArray = this.subscribedObjects[objectName].convertToArray;
 
           switch(generalScope) {
 
@@ -847,8 +940,24 @@ var GlueClient = function(socketObj, generalScope){
 
               cons && console.log("local object before update (" + localObjectName + "): ", $rootScope[localObjectName]);
 
-              $rootScope[localObjectName] = updatedObject;
-              $rootScope.$apply();
+
+              if (convertToArray === true) {
+
+                var newArray = [];
+
+                for (var key in updatedObject) {
+                  newArray.push(updatedObject[key]);
+                }
+
+                $rootScope[localObjectName] = newArray;
+                $rootScope.$apply();
+
+              } else {
+
+                $rootScope[localObjectName] = updatedObject;
+                $rootScope.$apply();
+
+              }
 
               var eventParams = {
                 "localObjectName": localObjectName,
@@ -904,6 +1013,13 @@ var GlueClient = function(socketObj, generalScope){
               $rootScope[localObjectName][nodeIndex] = updatedObject;
               $rootScope.$apply();
 
+              var eventParams = {
+                "localObjectName": localObjectName,
+                "remoteObjectName": objectName
+              };
+
+              this.triggerEvent('objectNodeUpdated', eventParams);
+
               cons && console.log(localObjectName + "[" + nodeIndex + "] after update: ", $rootScope[localObjectName][nodeIndex]);
 
             break;
@@ -913,6 +1029,13 @@ var GlueClient = function(socketObj, generalScope){
               cons && console.log(localObjectName + "[" + nodeIndex + "] before update: ", window[localObjectName][nodeIndex]);
 
               window[localObjectName][nodeIndex] = updatedObject;
+
+              var eventParams = {
+                "localObjectName": localObjectName,
+                "remoteObjectName": objectName
+              };
+
+              this.triggerEvent('objectNodeUpdated', eventParams);
 
               cons && console.log(localObjectName + "[" + nodeIndex + "] after update: ", window[localObjectName][nodeIndex]);
 
@@ -943,7 +1066,7 @@ var GlueClient = function(socketObj, generalScope){
 
 
   var checkStringJSON = function(jsonToTest) {
-    cons && console.log("checkStringJSON", jsonToTest);
+    cons && console.log("checkStringJSON");
 
     if (jsonToTest) {
 
